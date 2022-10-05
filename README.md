@@ -2,7 +2,7 @@
 
 #### By Jarret Jeter
 
-#### Web-scraper project for reddit using the Python Reddit API Wrapper (praw)
+#### Reddit web-scraper project using the Python Reddit API Wrapper (praw) for the general purpose of getting information on user comments on a particular subject.
 
 ## Technologies Used
 

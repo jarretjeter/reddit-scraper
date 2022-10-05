@@ -19,45 +19,60 @@ SECRET_TOKEN = os.environ.get("REDDSCRP_SECRET")
 
 headers = {"User-Agent": "reddscrape/0.0.1"}
 
-reddit = praw.Reddit(client_id=CLIENT_ID, client_secret=SECRET_TOKEN, user_agent=headers)
-
+@reddit_app.command("sub_data")
+def submission_data(submission: str, output=None) -> list:
+    """
+    Retrieve data on a single reddit submission(thread)
+    Requires a reddit submission URL or ID
+    """
+    
+    reddit = praw.Reddit(client_id=CLIENT_ID, client_secret=SECRET_TOKEN, user_agent=headers)
+    submission = reddit.submission(url=submission) if "https:" in str(submission) else reddit.submission(id=submission)
+    sub_id = submission.id
+    sub_title = submission.title
+    date = datetime.fromtimestamp(submission.created_utc)
+    author = submission.author
+    upvotes = submission.score
+    upvote_ratio = submission.upvote_ratio
+    num_comments = submission.num_comments
+    url =  f"https://www.reddit.com{submission.permalink}"
+    if output:
+        print(f"ID:{sub_id}, Title:{sub_title}, Date:{date}, Author:{author}, Upvotes:{upvotes}, Upvote Ratio:{upvote_ratio}, # of Comments:{num_comments}, URL:{url}")
+    return sub_id, sub_title, date, author, upvotes, upvote_ratio, num_comments, url
 
 @reddit_app.command("threads")
 def get_threads(reddit_group: str, subject: str, csv=None) -> pd.DataFrame:
     """
-    Loops through the threads returned from a subreddit's search results to retrieve the titles, links, and other metadata.\n
+    Loops through the threads returned from a subreddit's search sub_datas to retrieve the titles, links, and other metadata.\n
     Outputs to a csv\n
     "reddit_group" is the subreddit to search through. ex: 'boxing'\n
     "subject" is the topic you want to search about. ex: 'ali'
     """
-    submission_id_list = []
-    thread_titles = []
-    date_created = []
-    authors = []
-    thread_upvotes = []
-    upvote_ratio = []
-    total_comments = []
-    url_list = []
+
+    data_dict = {"ID": [], "Title" : [], "Date_Created": [], "Author": [], "Upvotes": [], "Upvote_Ratio": [], "Total_Comments": [], "URL": []}
+
+    reddit = praw.Reddit(client_id=CLIENT_ID, client_secret=SECRET_TOKEN, user_agent=headers)
     subreddit = reddit.subreddit(reddit_group)
+    
     logger.info(f"Searching subreddit '{reddit_group}' for '{subject}'")
     for submission in subreddit.search(subject, limit=None):
-        sub_id = submission.id
-        title = submission.title
+        submission_id = submission.id
+        submission_title = submission.title
         date = datetime.fromtimestamp(submission.created_utc)
         author = submission.author
-        score = submission.score
-        ratio = submission.upvote_ratio
+        upvotes = submission.score
+        upvote_ratio = submission.upvote_ratio
         num_comments = submission.num_comments
         url = "https://www.reddit.com" + submission.permalink
-        submission_id_list.append(sub_id)
-        thread_titles.append(title)
-        date_created.append(date)
-        authors.append(author)
-        thread_upvotes.append(score)
-        upvote_ratio.append(ratio)
-        total_comments.append(num_comments)
-        url_list.append(url)
-    data_dict = {"ID": submission_id_list, "Title" : thread_titles, "Date_Created": date_created, "Author": authors, "Upvotes": thread_upvotes, "Upvote_Ratio": upvote_ratio, "Total_Comments": total_comments, "URL": url_list}
+
+        data_dict["ID"] += [submission_id]
+        data_dict["Title"] += [submission_title]
+        data_dict["Date_Created"] += [date]
+        data_dict["Author"] += [author]
+        data_dict["Upvotes"] += [upvotes]
+        data_dict["Upvote_Ratio"] += [upvote_ratio]
+        data_dict["Total_Comments"] += [num_comments]
+        data_dict["URL"] += [url]
     logger.info(f"Creating dataframe for {subject} threads")
     df = pd.DataFrame(data=data_dict)
     if csv:
@@ -80,11 +95,13 @@ def get_comments(reddit_group: str, subject: str, csv=None) -> pd.DataFrame:
     authors = []
     upvotes = []
     i = 0
+
     logger.info(f"Retrieving comments from {subject} threads")
     while i < len(titles_df):
         row = titles_df.iloc[i]
         row_title = row["Title"]
         row_url = row["URL"]
+        reddit = praw.Reddit(client_id=CLIENT_ID, client_secret=SECRET_TOKEN, user_agent=headers)
         submission = reddit.submission(url=row_url)
         submission.comments.replace_more(limit=None)
         if submission.selftext != "":
