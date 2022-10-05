@@ -1,2 +1,6 @@
+# Directories
 data/
 venv/
+
+# Files
+*.csv
