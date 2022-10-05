@@ -49,7 +49,7 @@ def get_threads(reddit_group: str, subject: str, csv=None) -> pd.DataFrame:
     "subject" is the topic you want to search about. ex: 'ali'
     """
 
-    data_dict = {"ID": [], "Title" : [], "Date_Created": [], "Author": [], "Upvotes": [], "Upvote_Ratio": [], "Total_Comments": [], "URL": []}
+    data_dict = {"ID": [], "Title" : [], "Date": [], "Author": [], "Upvotes": [], "Upvote_Ratio": [], "Total_Comments": [], "URL": []}
 
     reddit = praw.Reddit(client_id=CLIENT_ID, client_secret=SECRET_TOKEN, user_agent=headers)
     subreddit = reddit.subreddit(reddit_group)
@@ -126,16 +126,13 @@ def get_comments(reddit_group: str, subject: str, csv=None) -> pd.DataFrame:
     "reddit_group" is the subreddit to search through. ex: 'boxing'\n
     "subject" is the topic you want to search about. ex: 'ali'
     """
-    titles_df = get_threads(reddit_group, subject)
-    thread_titles = []
-    comments = []
-    authors = []
-    upvotes = []
+    threads = get_threads(reddit_group, subject)
+    data_dict = {"Title": [], "Comment": [], "Author": [], "Upvotes": [], "Downvotes": []}
     i = 0
 
     logger.info(f"Retrieving comments from {subject} threads")
-    while i < len(titles_df):
-        row = titles_df.iloc[i]
+    while i < len(threads):
+        row = threads.iloc[i]
         row_title = row["Title"]
         row_url = row["URL"]
         reddit = praw.Reddit(client_id=CLIENT_ID, client_secret=SECRET_TOKEN, user_agent=headers)
@@ -144,19 +141,21 @@ def get_comments(reddit_group: str, subject: str, csv=None) -> pd.DataFrame:
         if submission.selftext != "":
             submission.selftext = submission.selftext.replace("\n", "")
             submission.selftext = submission.selftext.replace("\r", "")
-            thread_titles.append(row_title)
-            comments.append(submission.selftext)
-            authors.append(submission.author)
-            upvotes.append(submission.score)
+            data_dict["Title"] += [row_title]
+            data_dict["Comment"] += [submission.selftext]
+            data_dict["Author"] += [submission.author]
+            data_dict["Upvotes"] += [submission.score]
+            data_dict["Downvotes"] += [submission.downs]
+
         for comment in submission.comments.list():
-            thread_titles.append(row_title)
             comment.body = comment.body.replace("\n", "")
             comment.body = comment.body.replace("\r", "")
-            comments.append(comment.body)
-            authors.append(comment.author)
-            upvotes.append(comment.score)
+            data_dict["Title"] += [row_title]
+            data_dict["Comment"] += [comment.body]
+            data_dict["Author"] += [comment.author]
+            data_dict["Upvotes"] += [comment.score]
+            data_dict["Downvotes"] += [comment.downs]
         i += 1
-    data_dict = {"Title": thread_titles, "Comment": comments, "Author": authors, "Upvotes": upvotes}
     logger.info("Creating dataframe for comments")
     df = pd.DataFrame(data=data_dict)
     if csv:
