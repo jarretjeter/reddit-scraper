@@ -3,5 +3,6 @@ azure-storage-blob==12.12.0
 numpy==1.22.3
 pandas==1.4.2
 praw
+psaw
 typer==0.4.1
 typing_extensions==4.2.0
