@@ -2,7 +2,7 @@ import datetime as dt
 import logging
 from logging import INFO
 import os
-from time import sleep, time
+from time import sleep
 import pandas as pd
 import praw
 from psaw import PushshiftAPI
