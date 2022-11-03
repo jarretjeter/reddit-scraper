@@ -1,4 +1,5 @@
 import datetime as dt
+import glob
 import logging
 from logging import INFO
 import os
@@ -24,10 +25,29 @@ headers = {"User-Agent": "reddscrape/0.0.1"}
 reddit = praw.Reddit(client_id=CLIENT_ID, client_secret=SECRET_TOKEN, user_agent=headers)
 
 
+# WRITE CODE TO MERGE BATCH CSV'S
+def date_range(df:pd.DataFrame) -> dt.date:
+    """
+    Parse a pd.Dataframe to get the earliest and latest date
+    """
+    df["Date"] = pd.to_datetime(df["Date"])
+    min_date = min(df['Date'].dt.date)
+    max_date = max(df['Date'].dt.date)
+    return min_date, max_date
+
+
+def merge_dfs(subreddit: str, query: str, date_list: list) -> pd.DataFrame:
+    
+    csv_list = [file for file in glob.glob(f"./data/{subreddit}_{query}*")]
+    merged_df = pd.concat([pd.read_csv(c) for c in csv_list])
+    return merged_df
+
+
 @reddit_app.command("fetch_threads")
 def fetch_threads(subreddit: str, query: str, limit=None, csv=None) -> pd.DataFrame:
 
     data_dict = {"ID": [], "Title" : [], "Subreddit": [], "Date": [], "Author": [], "Upvotes": [], "Ratio": [], "Num_Comments": [], "URL": []}
+    date_list = []
 
     api = PushshiftAPI(reddit)
     limit = int(limit) if limit != None else limit
@@ -58,9 +78,14 @@ def fetch_threads(subreddit: str, query: str, limit=None, csv=None) -> pd.DataFr
                 logger.info("Batch size 500 reached. Saving current batch to csv file")
                 query = query.replace(" ", "_")
                 df["Author"].fillna("[deleted]", inplace=True)
-                df["Date"] = pd.to_datetime(df["Date"])
-                min_date = min(df['Date'].dt.date)
-                max_date = max(df['Date'].dt.date)
+                # df["Date"] = pd.to_datetime(df["Date"])
+                # min_date = min(df['Date'].dt.date)
+                # max_date = max(df['Date'].dt.date)
+                dates = date_range(df)
+                min_date = dates[0]
+                max_date = dates[1]
+                date_list.append(min_date)
+                date_list.append(max_date)
                 df.to_csv(f"./data/{subreddit}_{query}_threads-{min_date}-{max_date}.csv", index=False)
             # Reset data dictionary to save memory
             data_dict = {"ID": [], "Title" : [], "Subreddit": [], "Date": [], "Author": [], "Upvotes": [], "Ratio": [], "Num_Comments": [], "URL": []}
@@ -70,10 +95,22 @@ def fetch_threads(subreddit: str, query: str, limit=None, csv=None) -> pd.DataFr
         logger.info("Saving final batch to csv file")
         query = query.replace(" ", "_")
         df["Author"].fillna("[deleted]", inplace=True)
-        df["Date"] = pd.to_datetime(df["Date"])
-        min_date = min(df['Date'].dt.date)
-        max_date = max(df['Date'].dt.date)
+        # df["Date"] = pd.to_datetime(df["Date"])
+        # min_date = min(df['Date'].dt.date)
+        # max_date = max(df['Date'].dt.date)
+        dates = date_range(df)
+        min_date = dates[0]
+        max_date = dates[1]
+        date_list.append(min_date)
+        date_list.append(max_date)
         df.to_csv(f"./data/{subreddit}_{query}_threads-{min_date}-{max_date}.csv", index=False)
+        # Merge
+        merged_df = merge_dfs(subreddit, query)
+        # Update min/max_date to reflect the date ranges in the list
+        min_date = min(date_list)
+        max_date = max(date_list)
+        merged_df.to_csv(f"./data/merged_{subreddit}_{query}_threads_{min_date}-{max_date}.csv", index=False)
+
     return df
 
 
