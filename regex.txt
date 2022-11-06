@@ -1,5 +1,0 @@
-match (https://reddit.com/r/Boxing/comments/ybeydf/)most_overhated_boxers/itgwnt4/:
-^https:\/\/reddit\.com\/r\/\w*\/comments\/\w*\/
-
-match https://reddit.com/r/Boxing/(comments/ybeydf/)most_overhated_boxers/itgwnt4/
-(comments)\/\w*\/
