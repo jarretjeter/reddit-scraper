@@ -4,3 +4,5 @@ venv/
 
 # Files
 *.csv
+comments_dict.txt
+thread_dict.txt

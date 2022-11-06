@@ -35,7 +35,8 @@ def get_date_range(df:pd.DataFrame) -> dt.date:
     max_date = max(df['Date'].dt.date)
     return min_date, max_date
 
-@reddit_app.command("merge_df")
+
+@reddit_app.command("merge_dfs")
 def merge_dfs(subreddit: str, query: str, type: str) -> pd.DataFrame:
     """
     Merge a df from similar csv's and save to csv
@@ -45,6 +46,8 @@ def merge_dfs(subreddit: str, query: str, type: str) -> pd.DataFrame:
     if type not in types:
         raise ValueError("Invalid type parameter. Expected 't' for threads or 'c' for comments")
     type = "threads" if type == "t" else "comments"
+    sub_dir = f"./data/{subreddit}_{query}"
+    if not os.path.exists(sub_dir): os.mkdir(sub_dir)
     
     csv_list = [file for file in glob.glob(f"./data/{subreddit}_{query}_{type}*")]
     merged_df = pd.concat([pd.read_csv(csv) for csv in csv_list])
@@ -52,9 +55,9 @@ def merge_dfs(subreddit: str, query: str, type: str) -> pd.DataFrame:
     dates = get_date_range(merged_df)
     min_date = dates[0]
     max_date = dates[1]
-    filename = f"./data/merged_{subreddit}_{query}_{type}_{min_date}-{max_date}.csv"
+    filename = f"/merged_{subreddit}_{query}_{type}_{min_date}-{max_date}.csv"
     logger.info("Merging dataframes and saving to csv file.")
-    merged_df.to_csv(f"{filename}", index=False)
+    merged_df.to_csv(f"{sub_dir}{filename}", index=False)
     return merged_df
 
 
@@ -66,6 +69,8 @@ def fetch_threads(subreddit: str, query: str, limit=None) -> pd.DataFrame:
 
     data_dict = {"ID": [], "Title" : [], "Subreddit": [], "Date": [], "Author": [], "Upvotes": [], "Ratio": [], "Num_Comments": [], "URL": []}
     batch = 0
+    sub_dir = f"./data/{subreddit}_{query}"
+    if not os.path.exists(sub_dir): os.mkdir(sub_dir)
 
     api = PushshiftAPI(reddit)
     limit = int(limit) if limit != None else limit
@@ -100,9 +105,9 @@ def fetch_threads(subreddit: str, query: str, limit=None) -> pd.DataFrame:
             dates = get_date_range(df)
             min_date = dates[0]
             max_date = dates[1]
-            filename = f"./data/{subreddit}_{query}_threads_{min_date}-{max_date}.csv"
+            filename = f"/{subreddit}_{query}_threads_{min_date}-{max_date}.csv"
             logger.info("Saving batch to csv file.")
-            df.to_csv(f"{filename}", index=False)
+            df.to_csv(f"{sub_dir}{filename}", index=False)
             # Reset data dictionary to save memory
             data_dict = {"ID": [], "Title" : [], "Subreddit": [], "Date": [], "Author": [], "Upvotes": [], "Ratio": [], "Num_Comments": [], "URL": []}
 
@@ -113,8 +118,8 @@ def fetch_threads(subreddit: str, query: str, limit=None) -> pd.DataFrame:
     dates = get_date_range(df)
     min_date = dates[0]
     max_date = dates[1]
-    filename = f"./data/{subreddit}_{query}_threads_{min_date}-{max_date}.csv"
-    df.to_csv(f"{filename}", index=False)
+    filename = f"/{subreddit}_{query}_threads_{min_date}-{max_date}.csv"
+    df.to_csv(f"{sub_dir}{filename}", index=False)
     # Merge
     if batch >= 1:
         merged_df = merge_dfs(subreddit, query, type="t")
@@ -128,6 +133,8 @@ def fetch_comments(subreddit, query, limit=None):
 
     data_dict = {"ID": [], "Thread_Title": [], "Comment": [], "Date": [], "Author": [], "Upvotes": [], "Subreddit": [], "URL": []}
     batch = 0
+    sub_dir = f"./data/{subreddit}_{query}"
+    if not os.path.exists(sub_dir): os.mkdir(sub_dir)
 
     api = PushshiftAPI(reddit)
     limit = int(limit) if limit != None else limit
@@ -136,7 +143,7 @@ def fetch_comments(subreddit, query, limit=None):
         subreddit=subreddit,
         q=query,
         after=int(dt.datetime(2018, 1, 1).timestamp()) - 1,
-        before=int(dt.datetime(2022, 10, 7).timestamp()),
+        before=int(dt.datetime.now().timestamp()),
         limit=limit
     ))
 
@@ -180,9 +187,9 @@ def fetch_comments(subreddit, query, limit=None):
             dates = get_date_range(df)
             min_date = dates[0]
             max_date = dates[1]
-            filename = f"./data/{subreddit}_{query}_comments_{min_date}-{max_date}.csv"
+            filename = f"/{subreddit}_{query}_comments_{min_date}-{max_date}.csv"
             logger.info("Saving batch to csv file.")
-            df.to_csv(f"{filename}", index=False)
+            df.to_csv(f"{sub_dir}{filename}", index=False)
             # Reset data dictionary to save memory
             data_dict = {"ID": [], "Thread_Title": [], "Comment": [], "Date": [], "Author": [], "Upvotes": [], "Subreddit": [], "URL": []}
 
@@ -193,8 +200,8 @@ def fetch_comments(subreddit, query, limit=None):
     dates = get_date_range(df)
     min_date = dates[0]
     max_date = dates[1]
-    filename = f"./data/{subreddit}_{query}_comments_{min_date}-{max_date}.csv"
-    df.to_csv(f"{filename}", index=False)
+    filename = f"/{subreddit}_{query}_comments_{min_date}-{max_date}.csv"
+    df.to_csv(f"{sub_dir}{filename}", index=False)
     if batch >= 1:
         merged_df = merge_dfs(subreddit, query, type="c")
         return merged_df
