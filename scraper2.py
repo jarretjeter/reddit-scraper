@@ -46,10 +46,12 @@ def merge_dfs(subreddit: str, query: str, type: str) -> pd.DataFrame:
     if type not in types:
         raise ValueError("Invalid type parameter. Expected 't' for threads or 'c' for comments")
     type = "threads" if type == "t" else "comments"
+    query = query.replace(" ", "_")
     sub_dir = f"./data/{subreddit}_{query}"
     if not os.path.exists(sub_dir): os.mkdir(sub_dir)
     
-    csv_list = [file for file in glob.glob(f"./data/{subreddit}_{query}_{type}*")]
+    # csv_list = [file for file in glob.glob(f"./data/{subreddit}_{query}_{type}*")]
+    csv_list = [file for file in glob.glob(f"{sub_dir}/{subreddit}_{query}_{type}*")]
     merged_df = pd.concat([pd.read_csv(csv) for csv in csv_list])
     merged_df.sort_values(by=["Date"], inplace=True)
     dates = get_date_range(merged_df)
@@ -67,11 +69,6 @@ def fetch_threads(subreddit: str, query: str, limit=None) -> pd.DataFrame:
     Fetch a subreddit's threads/posts about a particular subject
     """
 
-    data_dict = {"ID": [], "Title" : [], "Subreddit": [], "Date": [], "Author": [], "Upvotes": [], "Ratio": [], "Num_Comments": [], "URL": []}
-    batch = 0
-    sub_dir = f"./data/{subreddit}_{query}"
-    if not os.path.exists(sub_dir): os.mkdir(sub_dir)
-
     api = PushshiftAPI(reddit)
     limit = int(limit) if limit != None else limit
     threads = api.search_submissions(
@@ -81,7 +78,16 @@ def fetch_threads(subreddit: str, query: str, limit=None) -> pd.DataFrame:
         before=int(dt.datetime.now().timestamp()),
         limit=limit
     )
+
     meta_list = [thread.__dict__ for thread in threads]
+
+    data_dict = {
+        "ID": [], "Title" : [], "Subreddit": [], "Date": [], "Author": [], "Upvotes": [], "Ratio": [], "Num_Comments": [], "URL": []
+        }
+    batch = 0
+    query = query.replace(" ", "_")
+    sub_dir = f"./data/{subreddit}_{query}"
+    if not os.path.exists(sub_dir): os.mkdir(sub_dir)
 
     for meta_dict in meta_list:
         if len(data_dict["ID"]) < 500:
@@ -100,7 +106,6 @@ def fetch_threads(subreddit: str, query: str, limit=None) -> pd.DataFrame:
             batch += 1
             df = pd.DataFrame(data_dict)
             logger.info("Batch size 500 reached.")
-            query = query.replace(" ", "_")
             df["Author"].fillna("[deleted]", inplace=True)
             dates = get_date_range(df)
             min_date = dates[0]
@@ -109,11 +114,12 @@ def fetch_threads(subreddit: str, query: str, limit=None) -> pd.DataFrame:
             logger.info("Saving batch to csv file.")
             df.to_csv(f"{sub_dir}{filename}", index=False)
             # Reset data dictionary to save memory
-            data_dict = {"ID": [], "Title" : [], "Subreddit": [], "Date": [], "Author": [], "Upvotes": [], "Ratio": [], "Num_Comments": [], "URL": []}
+            data_dict = {
+                "ID": [], "Title" : [], "Subreddit": [], "Date": [], "Author": [], "Upvotes": [], "Ratio": [], "Num_Comments": [], "URL": []
+                }
 
     df = pd.DataFrame(data_dict)
     logger.info("Fetching complete. Saving to csv file.")
-    query = query.replace(" ", "_")
     df["Author"].fillna("[deleted]", inplace=True)
     dates = get_date_range(df)
     min_date = dates[0]
@@ -130,11 +136,9 @@ def fetch_threads(subreddit: str, query: str, limit=None) -> pd.DataFrame:
 
 @reddit_app.command("fetch_comments")
 def fetch_comments(subreddit, query, limit=None):
-
-    data_dict = {"ID": [], "Thread_Title": [], "Comment": [], "Date": [], "Author": [], "Upvotes": [], "Subreddit": [], "URL": []}
-    batch = 0
-    sub_dir = f"./data/{subreddit}_{query}"
-    if not os.path.exists(sub_dir): os.mkdir(sub_dir)
+    """
+    Fetch a subreddit's user comments about a particular subject
+    """
 
     api = PushshiftAPI(reddit)
     limit = int(limit) if limit != None else limit
@@ -147,6 +151,13 @@ def fetch_comments(subreddit, query, limit=None):
         limit=limit
     ))
 
+    data_dict = {
+        "ID": [], "Thread_Title": [], "Comment": [], "Date": [], "Author": [], "Upvotes": [], "Subreddit": [], "URL": []
+        }
+    batch = 0
+    query = query.replace(" ", "_")
+    sub_dir = f"./data/{subreddit}_{query}"
+    if not os.path.exists(sub_dir): os.mkdir(sub_dir)
     past_url = ""
 
     for comment in comments:
@@ -182,7 +193,6 @@ def fetch_comments(subreddit, query, limit=None):
             batch += 1
             df = pd.DataFrame(data_dict)
             logger.info("Batch size 500 reached")
-            query = query.replace(" ", "_")
             df["Author"].fillna("[deleted]", inplace=True)
             dates = get_date_range(df)
             min_date = dates[0]
@@ -191,11 +201,12 @@ def fetch_comments(subreddit, query, limit=None):
             logger.info("Saving batch to csv file.")
             df.to_csv(f"{sub_dir}{filename}", index=False)
             # Reset data dictionary to save memory
-            data_dict = {"ID": [], "Thread_Title": [], "Comment": [], "Date": [], "Author": [], "Upvotes": [], "Subreddit": [], "URL": []}
+            data_dict = {
+                "ID": [], "Thread_Title": [], "Comment": [], "Date": [], "Author": [], "Upvotes": [], "Subreddit": [], "URL": []
+                }
 
     df = pd.DataFrame(data_dict)
     logger.info("Fetching complete. Saving to csv file.")
-    query = query.replace(" ", "_")
     df["Author"].fillna("[deleted]", inplace=True)
     dates = get_date_range(df)
     min_date = dates[0]
