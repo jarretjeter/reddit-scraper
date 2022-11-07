@@ -26,7 +26,7 @@ reddit = praw.Reddit(client_id=CLIENT_ID, client_secret=SECRET_TOKEN, user_agent
 
 
 
-def get_date_range(df:pd.DataFrame) -> dt.date:
+def get_date_range(df: pd.DataFrame) -> dt.date:
     """
     Parse a pd.Dataframe to get the earliest and latest date
     """
@@ -40,8 +40,8 @@ def get_date_range(df:pd.DataFrame) -> dt.date:
 def merge_dfs(subreddit: str, query: str, type: str) -> pd.DataFrame:
     """
     Merge a df from similar csv's and save to csv
+    types "t" for targeting thread dfs, "c" for targeting comment dfs
     """
-    # types "t" for targeting thread dfs, "c" for targeting comment dfs
     types = ["t", "c"]
     if type not in types:
         raise ValueError("Invalid type parameter. Expected 't' for threads or 'c' for comments")
@@ -50,15 +50,15 @@ def merge_dfs(subreddit: str, query: str, type: str) -> pd.DataFrame:
     sub_dir = f"./data/{subreddit}_{query}"
     if not os.path.exists(sub_dir): os.mkdir(sub_dir)
     
-    # csv_list = [file for file in glob.glob(f"./data/{subreddit}_{query}_{type}*")]
-    csv_list = [file for file in glob.glob(f"{sub_dir}/{subreddit}_{query}_{type}*")]
+    csv_list = [file for file in glob.glob(f"{sub_dir}/{subreddit}_{query}_{type}*.csv")]
+    logger.info("Merging dataframes")
     merged_df = pd.concat([pd.read_csv(csv) for csv in csv_list])
     merged_df.sort_values(by=["Date"], inplace=True)
     dates = get_date_range(merged_df)
     min_date = dates[0]
     max_date = dates[1]
     filename = f"/merged_{subreddit}_{query}_{type}_{min_date}-{max_date}.csv"
-    logger.info("Merging dataframes and saving to csv file.")
+    logger.info("Saving new df to csv file.")
     merged_df.to_csv(f"{sub_dir}{filename}", index=False)
     return merged_df
 
@@ -143,13 +143,13 @@ def fetch_comments(subreddit, query, limit=None):
     api = PushshiftAPI(reddit)
     limit = int(limit) if limit != None else limit
 
-    comments = list(api.search_comments(
+    comments = api.search_comments(
         subreddit=subreddit,
         q=query,
         after=int(dt.datetime(2018, 1, 1).timestamp()) - 1,
         before=int(dt.datetime.now().timestamp()),
         limit=limit
-    ))
+    )
 
     data_dict = {
         "ID": [], "Thread_Title": [], "Comment": [], "Date": [], "Author": [], "Upvotes": [], "Subreddit": [], "URL": []
