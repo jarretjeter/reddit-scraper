@@ -79,7 +79,6 @@ def fetch_threads(subreddit: str, query: str, limit=None) -> pd.DataFrame:
         limit=limit
     )
 
-    meta_list = [thread.__dict__ for thread in threads]
 
     data_dict = {
         "ID": [], "Title" : [], "Subreddit": [], "Date": [], "Author": [], "Upvotes": [], "Ratio": [], "Num_Comments": [], "URL": []
@@ -89,17 +88,18 @@ def fetch_threads(subreddit: str, query: str, limit=None) -> pd.DataFrame:
     sub_dir = f"./data/{subreddit}_{query}"
     if not os.path.exists(sub_dir): os.mkdir(sub_dir)
 
-    for meta_dict in meta_list:
+    for thread in threads:
+        thread_dict = thread.__dict__
         if len(data_dict["ID"]) < 500:
-            data_dict["ID"] += [meta_dict["id"]]
-            data_dict["Title"] += [meta_dict["title"]]
-            data_dict["Subreddit"] += [meta_dict["subreddit_name_prefixed"]]
-            data_dict["Date"] += [dt.datetime.fromtimestamp(meta_dict["created_utc"])]
-            data_dict["Author"] += [meta_dict["author"]]
-            data_dict["Upvotes"] += [meta_dict["ups"]]
-            data_dict["Ratio"] += [meta_dict["upvote_ratio"]]
-            data_dict["Num_Comments"] += [meta_dict["num_comments"]]
-            data_dict["URL"] += [f"https://www.reddit.com{meta_dict['permalink']}"]
+            data_dict["ID"] += [thread_dict["id"]]
+            data_dict["Title"] += [thread_dict["title"]]
+            data_dict["Subreddit"] += [thread_dict["subreddit_name_prefixed"]]
+            data_dict["Date"] += [dt.datetime.fromtimestamp(thread_dict["created_utc"])]
+            data_dict["Author"] += [thread_dict["author"]]
+            data_dict["Upvotes"] += [thread_dict["ups"]]
+            data_dict["Ratio"] += [thread_dict["upvote_ratio"]]
+            data_dict["Num_Comments"] += [thread_dict["num_comments"]]
+            data_dict["URL"] += [f"https://www.reddit.com{thread_dict['permalink']}"]
             sleep(1.0)
             logger.info("fetching next thread")
         else:
